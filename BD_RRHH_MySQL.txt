@@ -1,0 +1,112 @@
+CREATE DATABASE RRHH;
+USE RRHH;
+
+CREATE TABLE Oficinas (
+	codigo INT auto_increment PRIMARY KEY,
+	Ciudad NVARCHAR(50) NOT NULL,
+	País NVARCHAR(50) NOT NULL,
+	Región NVARCHAR(50) NOT NULL,
+	CodigoPostal NVARCHAR(20) NOT NULL,
+	Telefono NVARCHAR(20) NOT NULL,
+	Direccion NVARCHAR(255) NOT NULL
+);
+
+CREATE TABLE Departamentos (
+	Id INT auto_increment PRIMARY KEY,
+	Nombredpto NVARCHAR(50) NOT NULL,
+	Descripcion NVARCHAR(255) NULL
+);
+
+CREATE TABLE Puestos (
+	Id INT auto_increment PRIMARY KEY,
+	Nombre NVARCHAR(50) NOT NULL,
+	NivelSalarial NVARCHAR(60) NOT NULL,
+	SalarioMinimo DECIMAL(18, 2) NOT NULL,
+	SalarioMaximo DECIMAL(18, 2) NOT NULL
+    );
+
+CREATE TABLE Empleados (
+	Id INT auto_increment PRIMARY KEY,
+	Nombres NVARCHAR(50) NOT NULL,
+	Apellidos NVARCHAR(50) NOT NULL,
+	FechaNacimiento DATE NOT NULL,
+	genero NVARCHAR(10) NOT NULL,
+	estadoCivil NVARCHAR(20) NOT NULL,
+	email NVARCHAR(100) NOT NULL,
+	telefono NVARCHAR(20) NOT NULL,
+	fechaContratacion DATE NOT NULL,
+    DepartamentoID INT NOT NULL,
+    OficinaID INT NOT NULL,
+    PuestoID INT NOT NULL,
+	FOREIGN KEY (DepartamentoID) REFERENCES Departamentos(Id),
+	FOREIGN KEY (OficinaID) REFERENCES Oficinas(codigo),
+	FOREIGN KEY (PuestoID) REFERENCES Puestos(Id),
+	Salario DECIMAL(18, 2) NOT NULL,
+	FechaCreacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
+
+	CREATE TABLE Ausencias (
+    Id INT AUTO_INCREMENT PRIMARY KEY,
+    EmpleadoID INT NOT NULL,
+    TipoAusencia VARCHAR(50) NOT NULL, -- MySQL prefiere VARCHAR sobre NVARCHAR
+    FechaInicio DATE NOT NULL,
+    FechaFin DATE NOT NULL,
+    -- En MySQL se usa 'GENERATED ALWAYS AS' para columnas calculadas
+    DiasTotales INT GENERATED ALWAYS AS (DATEDIFF(FechaFin, FechaInicio) + 1) STORED, 
+    Justificada BOOLEAN NOT NULL, -- BIT funciona, pero BOOLEAN es el estándar en MySQL
+    Comentarios VARCHAR(200) NULL,    
+    FechaCreacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, -- GETDATE() cambia a CURRENT_TIMESTAMP
+    FOREIGN KEY (EmpleadoID) REFERENCES Empleados(Id)
+);
+
+	-- Tabla evaluaciones de desempeño
+	CREATE TABLE Evaluaciones (
+    EvaluacionID INT AUTO_INCREMENT PRIMARY KEY,
+    EmpleadoID INT NOT NULL,
+    FechaEvaluacion DATE NOT NULL,
+    -- MySQL soporta CHECK constraints desde la versión 8.0.16
+    Calificacion DECIMAL(3, 1) NOT NULL CHECK (Calificacion >= 1.0 AND Calificacion <= 5.0),
+    EvaluadorID INT NOT NULL,
+    Comentarios VARCHAR(255) NULL, -- NVARCHAR cambia a VARCHAR
+    FechaCreacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, -- GETDATE() cambia a CURRENT_TIMESTAMP
+    
+    -- Definición de Claves Foráneas
+    CONSTRAINT FK_Empleado FOREIGN KEY (EmpleadoID) REFERENCES Empleados(Id),
+    CONSTRAINT FK_Evaluador FOREIGN KEY (EvaluadorID) REFERENCES Empleados(Id)
+);	
+
+	CREATE TABLE Capacitaciones (
+    CapacitacionID INT AUTO_INCREMENT PRIMARY KEY,
+    NombreCapacitacion VARCHAR(100) NOT NULL,
+    Descripcion VARCHAR(255) NULL,
+    Proveedor VARCHAR(100) NOT NULL,
+    Costo DECIMAL(18, 2) NOT NULL,
+    FechaInicio DATE NOT NULL,
+    FechaFin DATE NOT NULL,
+    -- Definición de columna generada (calculada) para MySQL
+    Duracion INT GENERATED ALWAYS AS (DATEDIFF(FechaFin, FechaInicio) + 1) VIRTUAL,
+    FechaCreacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabla de relación entre empleados y capacitaciones (muchos a muchos)
+CREATE TABLE EmpleadoCapacitacion (
+    EmpleadoID INT NOT NULL,
+    CapacitacionID INT NOT NULL,
+    FechaInscripcion DATE NOT NULL,
+    FechaFinalizacion DATE NULL,
+    Estado VARCHAR(20) NOT NULL, -- Inscrito, En Progreso, Completado, Cancelado
+    Calificacion DECIMAL(3, 1) NULL CHECK (Calificacion >= 1.0 AND Calificacion <= 5.0),
+    Comentarios VARCHAR(255) NULL,
+    FechaCreacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    
+    -- Definición explícita de Claves Foráneas (Requerido en MySQL)
+    CONSTRAINT FK_Empleado_Capacitacion FOREIGN KEY (EmpleadoID) 
+        REFERENCES Empleados(Id) ON DELETE CASCADE,
+    CONSTRAINT FK_Capacitacion_Empleado FOREIGN KEY (CapacitacionID) 
+        REFERENCES Capacitaciones(CapacitacionID) ON DELETE CASCADE,
+    
+    -- Opcional: Definir una llave primaria compuesta para evitar duplicados
+    PRIMARY KEY (EmpleadoID, CapacitacionID)
+);
+
+show tables;
